@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
+
 @RestController
 @RequestMapping("/api/test")
 public class TestController {
@@ -18,13 +19,13 @@ public class TestController {
 	@GetMapping("/user")
 	@PreAuthorize("hasRole('USER')") ///secure methods in our Apis with @PreAuthorize annotation
 	public String userAccess() {
-		return " marhba bi si l User .";
+		return " Welcome in page User .";
 	}
 
 	@GetMapping("/admin")
 	@PreAuthorize("hasRole('ADMIN')")
 	public String adminAccess() {
-		return "Marhba bi si l admin.";
+		return " Welcome in page admin.";
 	}
 
 }

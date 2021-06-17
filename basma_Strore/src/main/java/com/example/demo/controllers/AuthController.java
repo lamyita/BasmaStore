@@ -2,7 +2,6 @@ package com.example.demo.controllers;
 
 import java.util.HashSet;
 
-
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -57,15 +56,12 @@ public class AuthController {
 
 	@Autowired
 	JwtUtils jwtUtils;
-	
-	
-	  @Autowired
-	  AccountConfirmationTokennRepository accountConfirmationTokennRepository;
 
-	  
+	@Autowired
+	AccountConfirmationTokennRepository accountConfirmationTokennRepository;
 
-	    @Autowired
-	    EmailService emailService;
+	@Autowired
+	EmailService emailService;
 
 	@PostMapping("/signin")
 	public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
@@ -75,37 +71,28 @@ public class AuthController {
 
 		SecurityContextHolder.getContext().setAuthentication(authentication);
 		String jwt = jwtUtils.generateJwtToken(authentication);
-		
-		UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();		
-		List<String> roles = userDetails.getAuthorities().stream()
-				.map(item -> item.getAuthority())
+
+		UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+		List<String> roles = userDetails.getAuthorities().stream().map(item -> item.getAuthority())
 				.collect(Collectors.toList());
 
-		return ResponseEntity.ok(new JwtResponse(jwt, 
-												 userDetails.getId(), 
-												 userDetails.getUsername(), 
-												 userDetails.getEmail(), 
-												 roles));
+		return ResponseEntity.ok(
+				new JwtResponse(jwt, userDetails.getId(), userDetails.getUsername(), userDetails.getEmail(), roles));
 	}
 
 	@PostMapping("/signup")
-	public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
+	public String registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
 		if (userRepository.existsByUsername(signUpRequest.getUsername())) {
-			return ResponseEntity
-					.badRequest()
-					.body(new MessageResponse("Error: Username is already taken!"));
+			return "Error: Username is already taken!";
 		}
 
 		if (userRepository.existsByEmail(signUpRequest.getEmail())) {
-			return ResponseEntity
-					.badRequest()
-					.body(new MessageResponse("Error: Email is already in use!"));
+			return "Error: Email is already in use!";
 		}
 
 		// Create new user's account
-		User user = new User(signUpRequest.getUsername(), 
-							 signUpRequest.getEmail(),
-							 encoder.encode(signUpRequest.getPassword()));
+		User user = new User(signUpRequest.getUsername(), signUpRequest.getEmail(),
+				encoder.encode(signUpRequest.getPassword()));
 
 		Set<String> strRoles = signUpRequest.getRole();
 		Set<Role> roles = new HashSet<>();
@@ -130,8 +117,7 @@ public class AuthController {
 					roles.add(userRole);
 				}
 			});
-			
-		
+
 		}
 
 		user.setRoles(roles);
@@ -140,45 +126,38 @@ public class AuthController {
 		AccountConfirmationToken confirmationToken = new AccountConfirmationToken(user);
 		accountConfirmationTokennRepository.save(confirmationToken);
 
-        SimpleMailMessage mailMessage = new SimpleMailMessage();
-        mailMessage.setTo(user.getEmail());
-        mailMessage.setSubject("Complete Registration!");
-        mailMessage.setText("To confirm your account, please click here : "
-        +"http://localhost:8086/api/auth/confirm-account?token="+confirmationToken.getConfirmationToken());
+		SimpleMailMessage mailMessage = new SimpleMailMessage();
+		mailMessage.setTo(user.getEmail());
+		mailMessage.setSubject("Complete Registration!");
+		mailMessage.setText("To confirm your account, please click here : "
+				+ "http://localhost:8086/api/auth/confirm-account?token=" + confirmationToken.getConfirmationToken());
 
-        emailService.sendEmail(mailMessage);
-        
+		emailService.sendEmail(mailMessage);
 
-		return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
+		return "User registered successfully!";
 	}
-	
 
-	
-	
+	@RequestMapping(value = "/confirm-account", method = { RequestMethod.GET, RequestMethod.POST })
 
-    @RequestMapping(value="/confirm-account", method= {RequestMethod.GET, RequestMethod.POST})
-    
-	public ResponseEntity<?> confirmUserAccount(@Valid @RequestBody SignupRequest signUpRequest,@RequestParam("token")String accountConfirmationToken) {
-		
-		AccountConfirmationToken token = accountConfirmationTokennRepository.findByConfirmationToken(accountConfirmationToken);
-	
-		if(token != null)
-        {
-			User user = userRepository.findByEmailIgnoreCase(token.getUserEntity().getEmail()); 
+	public ResponseEntity<?> confirmUserAccount(@Valid @RequestBody SignupRequest signUpRequest,
+			@RequestParam("token") String accountConfirmationToken) {
+
+		AccountConfirmationToken token = accountConfirmationTokennRepository
+				.findByConfirmationToken(accountConfirmationToken);
+
+		if (token != null) {
+			User user = userRepository.findByEmailIgnoreCase(token.getUserEntity().getEmail());
 			user.setEnabled(true);
-			System.out.println("---------------------------------"+user+"--------------------------------");
+			System.out.println("---------------------------------" + user + "--------------------------------");
 
 			userRepository.save(user);
 
-        }else {
-        	System.out.println("message,The link is invalid or broken!");
-        }
-		
+		} else {
+			System.out.println("message,The link is invalid or broken!");
+		}
+
 		return ResponseEntity.ok(new MessageResponse("your account confirme succ"));
-	
-	
+
 	}
-	
-	
-	
+
 }
